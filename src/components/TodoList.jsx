@@ -15,10 +15,28 @@ const TodoList = () => {
         localStorage.setItem("tasks", JSON.stringify(data));
     }, [data]);
 
+    // Check for expired tasks
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const updatedData = data.filter((task) => {
+                // If the task has expired (current time is past expiration time)
+                return new Date(task.expirationTimestamp).getTime() > now;
+            });
+            if (updatedData.length !== data.length) {
+                setData(updatedData)
+            }
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [data]);
+
     const Ajouter = () => {
         const message = txt.current.value.trim();
         if (message) {
-            setData([...data, { text: message, completed: false }]);
+            const expirationTimestamp = new Date();
+            expirationTimestamp.setHours(expirationTimestamp.getHours() + 24); // Add 24 hours to the current time
+
+            setData([...data, { text: message, completed: false, timestamp: new Date().toISOString(), expirationTimestamp: expirationTimestamp.toISOString() }]);
             txt.current.value = "";
         } else {
             alert("It is mandatory to fill in the field.");
@@ -58,24 +76,39 @@ const TodoList = () => {
                     </button>
                 </div>
                 <ul className="list-group">
-                    {data.map((task, index) => (
-                        <li
-                            key={index}
-                            className={`list-group-item d-flex justify-content-between align-items-center task-item ${task.completed ? "completed" : ""
-                                }`}
-                            onClick={() => completedTask(index)}
-                        >
-                            {task.text}
-                            <RiDeleteBin6Line
-                                className="delete-icon"
-                                size={20}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    Supprime(index);
-                                }}
-                            />
-                        </li>
-                    ))}
+                    {data.length === 0 ? (
+                        <li className="list-group-item text-center">No tasks available</li>
+                    ) : (
+                        data.map((task, index) => (
+                            <li
+                                key={index}
+                                className={`list-group-item d-flex justify-content-between align-items-center task-item ${task.completed ? "completed" : ""}`}
+                                onClick={() => completedTask(index)}
+                            >
+                                <span>
+                                    {task.text}
+                                    <br />
+                                    <small>
+                                        Expires:{" "}
+                                        {new Date(task.expirationTimestamp).toLocaleString("en-US", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            day: "2-digit",
+                                            month: "short",
+                                        })}
+                                    </small>
+                                </span>
+                                <RiDeleteBin6Line
+                                    className="delete-icon"
+                                    size={20}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        Supprime(index);
+                                    }}
+                                />
+                            </li>
+                        ))
+                    )}
                 </ul>
             </div>
             <ToastContainer />
